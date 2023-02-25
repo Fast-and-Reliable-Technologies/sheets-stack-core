@@ -1,6 +1,6 @@
 {
   "name": "@de44/sheets-stack-core",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "JS wrapper to simplify interactions with Google Sheets.",
   "main": "src/index.js",
   "publishConfig": {
@@ -14,8 +14,11 @@
     "test": "jest"
   },
   "keywords": [],
-  "author": "David Esposito <david@espo.email>",
-  "license": "ISC",
+  "repository": {
+    "url": "https://github.com/Fast-and-Reliable-Technologies/sheets-stack-core"
+  },
+  "author": "David Esposito <david+npm@espo.email>",
+  "license": "MIT",
   "dependencies": {
     "better-logging": "^5.0.0",
     "dotenv": "^16.0.3",
