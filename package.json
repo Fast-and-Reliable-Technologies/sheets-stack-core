@@ -1,0 +1,33 @@
+{
+  "name": "@de44/sheets-stack-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "predocs": "rimraf docs",
+    "docs": "./node_modules/jsdoc/jsdoc.js -c ./.jsdoc.conf.json",
+    "docs:serve": "serve docs -p 3080",
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "David Esposito <david@espo.email>",
+  "license": "ISC",
+  "dependencies": {
+    "better-logging": "^5.0.0",
+    "dotenv": "^16.0.3",
+    "googleapis": "^111.0.0",
+    "lodash": "^4.17.21",
+    "lodash-query": "^1.4.2",
+    "node-cache": "^5.1.2",
+    "save-dev": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "jest": "^29.4.3",
+    "jsdoc": "^4.0.1",
+    "rimraf": "^4.1.2",
+    "serve": "^14.2.0"
+  }
+}

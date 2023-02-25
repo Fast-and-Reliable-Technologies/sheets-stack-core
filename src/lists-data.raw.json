@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Colors",
+    "items": [
+      "Royal blue & peach",
+      "Blue & pink",
+      "Charcoal & yellow",
+      "Red & yellow",
+      "Lime green & electric blue",
+      "Lavender & teal"
+    ]
+  },
+  {
+    "title": "Industries",
+    "items": [
+      "Airport Operation",
+      "Hotels & Resorts",
+      "Travel Agency Services",
+      "Tourism",
+      "Airlines",
+      "Reinsurance Carriers",
+      "Commercial Aircraft Manufacturing",
+      "Architectural Services"
+    ]
+  },
+  {
+    "title": "Foods",
+    "items": [
+      "Ice Cream.",
+      "Chicken Tenders.",
+      "Soft Drinks/Soda.",
+      "Pizza.",
+      "Oreo Cookies.",
+      "French Fries.",
+      "Hot Dogs."
+    ]
+  }
+]
