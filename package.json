@@ -1,6 +1,6 @@
 {
   "name": "@de44/sheets-stack-core",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "JS wrapper to simplify interactions with Google Sheets.",
   "main": "dist/index.js",
   "publishConfig": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "tsc",
+    "build": "tsc --project tsconfig.build.json",
     "predocs": "rimraf docs",
     "docs": "typedoc --out docs src/index.ts",
     "docs:serve": "serve docs -p 3080",

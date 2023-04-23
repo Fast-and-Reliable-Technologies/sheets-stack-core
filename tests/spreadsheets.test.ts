@@ -131,9 +131,9 @@ describe("SpreadsheetsClient", () => {
   test("client writes multi cell", async () => {
     const sheets = await SpreadsheetsClient.instance();
     const range = "Sheet1!E1:F3";
-    const values = [];
+    const values: string[][] = [];
     for (let i = 0; i < 3; i++) {
-      const curr = [];
+      const curr: string[] = [];
       for (let k = 0; k < 2; k++) {
         curr.push(randomString());
       }
