@@ -1,79 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>JSDoc: Source: basicDatabase.test.js</title>
-
-    <script src="scripts/prettify/prettify.js"> </script>
-    <script src="scripts/prettify/lang-css.js"> </script>
-    <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
-    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
-    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
-</head>
-
-<body>
-
-<div id="main">
-
-    <h1 class="page-title">Source: basicDatabase.test.js</h1>
-
-    
-
-
-
-    
-    <section>
-        <article>
-            <pre class="prettyprint source linenums"><code>// @ts-check
-const { logger } = require("./utils");
-const {
-  getAuth,
-  getSheetsClient,
-  SpreadsheetsClient,
-} = require("./spreadsheets");
-const { BasicDatabase } = require("./basicDatabase");
-
-/** @typedef {import('./Models').SearchOptions} SearchOptions */
+import _ from "lodash";
+import { BasicDatabase, SearchOptions } from "../src";
 
 const spreadsheetId = "1tPc2W9ZXRY7dy4q5UQYUv4TZ0GGSkdxs29FMlJGZy10";
 const sheetName = "basicdb";
 
+interface TestUser {
+  _row?: number;
+  id: number;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+}
+
 const randomNumber = (min = -1000, max = 1000) =>
   Math.trunc(Math.random() * (max - min) + min);
-const randomUser = () => {
+const randomUser = (): TestUser => {
   const id = randomNumber();
   return {
     id,
     name: `user${id}`,
     email: `user${id}@example.com`,
-    isAdmin: Math.random() &lt; 0.5,
+    isAdmin: Math.random() < 0.5,
   };
 };
 
-const USER1 = {
+const USER1: TestUser = {
   _row: 2,
   id: 1,
   name: "user1",
   email: "user1@example.com",
   isAdmin: true,
 };
-const USER2 = {
+const USER2: TestUser = {
   _row: 3,
   id: 2,
   name: "user2",
   email: "user2@example.com",
   isAdmin: false,
 };
-const USER3 = {
+const USER3: TestUser = {
   _row: 4,
   id: 3,
   name: "user3",
   email: "user3@example.com",
   isAdmin: false,
 };
-const USER4 = {
+const USER4: TestUser = {
   _row: 5,
   id: 4,
   name: "user4",
@@ -81,22 +53,15 @@ const USER4 = {
   isAdmin: false,
 };
 
-async function getDb() {
-  const auth = getAuth();
-  const sheetsCli = await getSheetsClient(auth);
-  const cli = new SpreadsheetsClient(sheetsCli, logger);
-  return new BasicDatabase(cli);
-}
-
 describe("Basic Database", () => {
   test("can fetch headers", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const actual = await db.getHeaders(spreadsheetId, sheetName);
     const expected = ["id", "name", "email", "isAdmin"];
     expect(actual).toEqual(expected);
   });
   test("can fetch meta", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const actual = await db.getMeta(spreadsheetId, sheetName);
     const expected = {
       title: "[DO NOT DELETE] Development Test Sheet",
@@ -115,79 +80,79 @@ describe("Basic Database", () => {
     expect(actual).toEqual(expected);
   });
   test("can get row", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const _row = 3;
     const actual = await db.get(spreadsheetId, sheetName, _row);
     const expected = { ...USER2, _row };
     expect(actual).toEqual(expected);
   });
   test("can list records", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const actual = await db.list(spreadsheetId, sheetName);
     const expected = [USER1, USER2, USER3, USER4];
     expect(actual).toEqual(expected);
   });
   test("can list records with limit", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const options = { limit: 2 };
     const actual = await db.list(spreadsheetId, sheetName, options);
     const expected = [USER1, USER2];
     expect(actual).toEqual(expected);
   });
   test("can list records with limit and offset", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const options = { limit: 2, offset: 1 };
     const actual = await db.list(spreadsheetId, sheetName, options);
     const expected = [USER2, USER3];
     expect(actual).toEqual(expected);
   });
   test("can search records", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const actual = await db.search(spreadsheetId, sheetName);
     const expected = [USER1, USER2, USER3, USER4];
     expect(actual).toEqual(expected);
   });
   test("can search records with filter", async () => {
-    const db = await getDb();
-    /** @type {SearchOptions} */
-    const options = { filter: { id: 2 } };
+    const db = await BasicDatabase.instance();
+    const options: SearchOptions = { filter: { id: 2 } };
     const actual = await db.search(spreadsheetId, sheetName, options);
     const expected = [USER2];
     expect(actual).toEqual(expected);
   });
   test("can search records with single sort", async () => {
-    const db = await getDb();
-    /** @type {SearchOptions} */
-    const options = { sort: "id", sortDesc: true };
+    const db = await BasicDatabase.instance();
+    const options: SearchOptions = { sort: "id", sortDesc: true };
     const actual = await db.search(spreadsheetId, sheetName, options);
     const expected = [USER4, USER3, USER2, USER1];
     expect(actual).toEqual(expected);
   });
   test("can search records with custom sort", async () => {
-    const db = await getDb();
-    /** @type {SearchOptions} */
-    const options = { sort: ["isAdmin", "name"], sortDesc: true };
+    const db = await BasicDatabase.instance();
+    const options: SearchOptions = {
+      sort: ["isAdmin", "name"],
+      sortDesc: true,
+    };
     const actual = await db.search(spreadsheetId, sheetName, options);
     const expected = [USER1, USER4, USER3, USER2];
     expect(actual).toEqual(expected);
   });
   test("can search records with query", async () => {
-    const db = await getDb();
-    /** @type {SearchOptions} */
-    const options = { query: { id: { $gt: 1, $lte: 3 } } };
+    const db = await BasicDatabase.instance();
+    const options: SearchOptions = { query: { id: { $gt: 1, $lte: 3 } } };
     const actual = await db.search(spreadsheetId, sheetName, options);
     const expected = [USER2, USER3];
     expect(actual).toEqual(expected);
   });
   test("can append single row", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const data = randomUser();
     const actual = await db.insert(spreadsheetId, "writedb", data);
+    const _row: number = _.get(actual, "data[0]._row", -1);
     const expected = {
       updatedRows: 1,
       data: [
         {
-          _row: actual.data[0]._row,
+          _row: _row,
           ...data,
         },
       ],
@@ -195,24 +160,25 @@ describe("Basic Database", () => {
     expect(actual).toEqual(expected);
   });
   test("can append multiple rows", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const data = [randomUser(), randomUser()];
     const actual = await db.insert(spreadsheetId, "writedb", data);
     const expected = {
       updatedRows: 2,
       data: [],
     };
-    for (let i = 0; i &lt; data.length; i++) {
+    for (let i = 0; i < data.length; i++) {
+      const _row: number = _.get(actual, `data[${i}]._row`, -1);
       // @ts-ignore
       expected.data.push({
-        _row: actual.data[i]._row,
+        _row: _row,
         ...data[i],
       });
     }
     expect(actual).toEqual(expected);
   });
   test("can update row", async () => {
-    const db = await getDb();
+    const db = await BasicDatabase.instance();
     const data = randomUser();
     const _row = 3;
     data.name = "updated-" + data.name;
@@ -227,26 +193,3 @@ describe("Basic Database", () => {
     expect(res).toEqual([data]);
   });
 });
-</code></pre>
-        </article>
-    </section>
-
-
-
-
-</div>
-
-<nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="BasicDatabase.html">BasicDatabase</a></li><li><a href="ConsoleLogger.html">ConsoleLogger</a></li><li><a href="ListsDatabase.html">ListsDatabase</a></li><li><a href="SheetStackLogger.html">SheetStackLogger</a></li><li><a href="SpreadsheetsClient.html">SpreadsheetsClient</a></li></ul><h3>Global</h3><ul><li><a href="global.html#getAuth">getAuth</a></li><li><a href="global.html#getSheetsClient">getSheetsClient</a></li><li><a href="global.html#mapRows">mapRows</a></li><li><a href="global.html#mapValues">mapValues</a></li><li><a href="global.html#safeGet">safeGet</a></li></ul>
-</nav>
-
-<br class="clear">
-
-<footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.1</a> on Sat Feb 25 2023 06:45:04 GMT-0500 (Eastern Standard Time)
-</footer>
-
-<script> prettyPrint(); </script>
-<script src="scripts/linenumber.js"> </script>
-</body>
-</html>

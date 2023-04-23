@@ -1,10 +1,10 @@
 // @ts-check
-const { SheetStackLogger } = require("./utils.js");
-const {
+import {
+  SheetStackLogger,
   getAuth,
   getSheetsClient,
   SpreadsheetsClient,
-} = require("./spreadsheets.js");
+} from "../src";
 const SHEET_DATA_RAW = require("./sheet-data.raw.json");
 
 const spreadsheetId = "1tPc2W9ZXRY7dy4q5UQYUv4TZ0GGSkdxs29FMlJGZy10";
@@ -53,8 +53,7 @@ describe("getSheetsClient", () => {
 
 describe("SpreadsheetsClient", () => {
   test("client gets sheets details for test sheet", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const actual = await sheets.sheetDetails(spreadsheetId);
     const expected = {
       title: "[DO NOT DELETE] Development Test Sheet",
@@ -71,30 +70,26 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client reads single cell", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const actual = await sheets.read(spreadsheetId, "Sheet1!A1");
     const expected = [["Hello"]];
     expect(actual).toEqual(expected);
   });
   test("client reads multi cell", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const actual = await sheets.read(spreadsheetId, "Sheet1!A1:B1");
     const expected = [["Hello", "World!"]];
     expect(actual).toEqual(expected);
   });
   test("client reads multi cell column oriented", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const options = { majorDimension: "COLUMNS" };
     const actual = await sheets.read(spreadsheetId, "Sheet1!A1:B1", options);
     const expected = [["Hello"], ["World!"]];
     expect(actual).toEqual(expected);
   });
   test("client reads sparse cell", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const actual = await sheets.read(spreadsheetId, "Sheet1!A1:B6");
     const expected = [
       ["Hello", "World!"],
@@ -107,8 +102,7 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client reads whole sheet", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const actual = await sheets.read(spreadsheetId, "basicdb!A2:Z1000");
     const expected = [
       ["1", "user1", "user1@example.com", "TRUE"],
@@ -119,8 +113,7 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client writes single cell", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const range = "Sheet1!D1";
     let values = [[randomString()]];
     // WRITE RANDOM VALUE
@@ -136,8 +129,7 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client writes multi cell", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const range = "Sheet1!E1:F3";
     const values = [];
     for (let i = 0; i < 3; i++) {
@@ -160,8 +152,7 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client appends multi cells", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const range = "Sheet1!H1";
     const values = [[new Date().toISOString(), randomString(), randomString()]];
     // WRITE RANDOM VALUE
@@ -178,8 +169,7 @@ describe("SpreadsheetsClient", () => {
     expect(actual).toEqual(expected);
   });
   test("client appends multi rows", async () => {
-    const cli = await getSheetsClient(getAuth());
-    const sheets = new SpreadsheetsClient(cli, logger);
+    const sheets = await SpreadsheetsClient.instance();
     const range = "Sheet1!H1";
     const now = new Date().toISOString();
     const values = [

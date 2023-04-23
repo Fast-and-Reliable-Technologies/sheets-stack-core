@@ -5,7 +5,48 @@ modules for different use cases.
 
 See the full [Documentation on GitHub Pages](https://fast-and-reliable-technologies.github.io/sheets-stack-core/).
 
-## Modules
+## Getting Started
+
+Start with documentation for `BasicDatabase`, `ListsDatabase`, and `SpreadsheetsClient`.
+
+```ts
+import {
+  BasicDatabase,
+  ListsDatabase,
+  SpreadsheetsClient,
+} from "@de44/sheets-stack-core";
+
+async function getData(
+  spreadsheetId: string,
+  sheetName: string
+): Promise<any[]> {
+  const db = await BasicDatabase.instance();
+  const options = { limit: 2, offset: 1 };
+  const data = await db.list(spreadsheetId, sheetName, options);
+  return data;
+}
+
+async function getLists(
+  spreadsheetId: string,
+  sheetName: string
+): Promise<ListsDbItems[]> {
+  const db = await ListsDatabase.instance();
+  const data = await db.list(spreadsheetId, sheetName, options);
+  return data;
+}
+
+async function getRange(
+  spreadsheetId: string,
+  sheetName: string,
+  range: string = "A1:Z1000"
+): Promise<any[][]> {
+  const cli = await SpreadsheetsClient.instance();
+  const data = await db.read(spreadsheetId, sheetName, range);
+  return data;
+}
+```
+
+## Modes
 
 ### RPC - Remote Procedural Call
 

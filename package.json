@@ -2,16 +2,18 @@
   "name": "@de44/sheets-stack-core",
   "version": "1.0.2",
   "description": "JS wrapper to simplify interactions with Google Sheets.",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
+    "build": "tsc",
     "predocs": "rimraf docs",
-    "docs": "./node_modules/jsdoc/jsdoc.js -c ./.jsdoc.conf.json",
+    "docs": "typedoc --out docs src/index.ts",
     "docs:serve": "serve docs -p 3080",
     "docs:deploy": "gh-pages -d docs",
-    "test": "jest"
+    "test": "jest --coverage",
+    "help": "cat package.json | jq '.scripts'"
   },
   "keywords": [],
   "repository": {
@@ -25,14 +27,18 @@
     "googleapis": "^111.0.0",
     "lodash": "^4.17.21",
     "lodash-query": "^1.4.2",
-    "node-cache": "^5.1.2",
-    "save-dev": "^0.0.1-security"
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.1",
+    "@types/lodash": "^4.14.194",
     "gh-pages": "^5.0.0",
     "jest": "^29.4.3",
-    "jsdoc": "^4.0.1",
     "rimraf": "^4.1.2",
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "typedoc": "^0.24.5",
+    "typescript": "^5.0.4"
   }
 }
