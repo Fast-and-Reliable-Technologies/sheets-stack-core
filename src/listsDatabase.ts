@@ -1,7 +1,7 @@
 import _ from "lodash";
 import NodeCache from "node-cache";
 import { SpreadsheetsClient } from "./spreadsheets";
-import { ListsDbItems, ListsDbMeta } from "./Models";
+import { ListsDbItems, ListsDbMeta } from "./models";
 
 const cache = new NodeCache({
   maxKeys: 1000,

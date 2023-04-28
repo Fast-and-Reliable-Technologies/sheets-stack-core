@@ -4,7 +4,7 @@ import lodashQuery from "lodash-query";
 import NodeCache from "node-cache";
 import { safeGet } from "./utils";
 import { SpreadsheetsClient } from "./spreadsheets";
-import { BasicDbAppendResult, BasicDbMeta } from "./Models";
+import { BasicDbAppendResult, BasicDbMeta } from "./models";
 
 // @ts-ignore - No @types for lodash-query
 lodashQuery(_);

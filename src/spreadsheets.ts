@@ -5,7 +5,7 @@ import {
   JSONClient,
   GoogleAuth,
 } from "google-auth-library/build/src/auth/googleauth";
-import { SheetWriteResult, SpreadsheetDetails } from "./Models";
+import { SheetWriteResult, SpreadsheetDetails } from "./models";
 
 const KEY_FILE = process.env.KEY_FILE ?? "keys.json";
 const SCOPES =
