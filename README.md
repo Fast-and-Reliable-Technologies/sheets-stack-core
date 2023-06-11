@@ -11,17 +11,20 @@ Start with documentation for `BasicDatabase`, `ListsDatabase`, and `Spreadsheets
 
 ```ts
 import {
-  BasicDatabase,
-  ListsDatabase,
+  DefaultBasicDatabase,
+  DefaultListDatabase,
+  DefaultSpreadsheetsClient,
+  ListDatabase,
+  ListsDbItems,
   SpreadsheetsClient,
 } from "@de44/sheets-stack-core";
 
-async function getData(
+async function getObjects(
   spreadsheetId: string,
   sheetName: string
 ): Promise<any[]> {
-  const db = await BasicDatabase.instance();
-  const options = { limit: 2, offset: 1 };
+  const db = await DefaultBasicDatabase.instance();
+  const options = { limit: 10, offset: 20 };
   const data = await db.list(spreadsheetId, sheetName, options);
   return data;
 }
@@ -30,8 +33,8 @@ async function getLists(
   spreadsheetId: string,
   sheetName: string
 ): Promise<ListsDbItems[]> {
-  const db = await ListsDatabase.instance();
-  const data = await db.list(spreadsheetId, sheetName, options);
+  const db: ListDatabase = await DefaultListDatabase.instance();
+  const data = await db.getAll(spreadsheetId, sheetName);
   return data;
 }
 
@@ -40,8 +43,9 @@ async function getRange(
   sheetName: string,
   range: string = "A1:Z1000"
 ): Promise<any[][]> {
-  const cli = await SpreadsheetsClient.instance();
-  const data = await db.read(spreadsheetId, sheetName, range);
+  const cli: SpreadsheetsClient = await DefaultSpreadsheetsClient.instance();
+  const sheetRange = `${sheetName}!${range}`;
+  const data = await cli.getRange(spreadsheetId, sheetRange);
   return data;
 }
 ```

@@ -9,6 +9,7 @@ export const safeGet = <T>(object: any, path: string, defaultValue: T): T => {
   return val;
 };
 
+// TODO: improve logging implentation
 export const DEBUG_LOG_LEVEL = 4;
 export const LOG_LOG_LEVEL = 3;
 export const INFO_LOG_LEVEL = 2;
@@ -57,6 +58,7 @@ export class ConsoleLogger extends SheetStackLogger {
 }
 
 let logger: ConsoleLogger | undefined;
+
 export const getDefaultLogger = () => {
   if (!logger) {
     logger = new ConsoleLogger();

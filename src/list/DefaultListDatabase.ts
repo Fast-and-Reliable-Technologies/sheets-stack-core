@@ -1,8 +1,15 @@
 import _ from "lodash";
 import NodeCache from "node-cache";
-import { SpreadsheetsClient } from "./spreadsheets";
-import { ListsDbItems, ListsDbMeta } from "./models";
+import { DefaultSpreadsheetsClient, SpreadsheetsClient } from "../sheet";
+import { SheetName, SpreadsheetId } from "../models";
+import {
+  ListDatabase,
+  ListHeaders,
+  ListsDbItems,
+  ListsDbMeta,
+} from "./ListDatabase";
 
+// TODO: refactor caching strategy
 const cache = new NodeCache({
   maxKeys: 1000,
   stdTTL: 45,
@@ -32,20 +39,20 @@ async function getLists(
 }
 ```
    */
-export class ListsDatabase {
+export class DefaultListDatabase implements ListDatabase {
   protected cli: SpreadsheetsClient;
 
   constructor(cli: SpreadsheetsClient) {
     this.cli = cli;
   }
 
-  async getTitles(spreadsheetId: string, sheetName: string): Promise<string[]> {
-    const cacheKey = getTitleCacheKey(spreadsheetId, sheetName);
+  async getTitles(sid: SpreadsheetId, name: SheetName): Promise<ListHeaders> {
+    const cacheKey = getTitleCacheKey(sid, name);
     let titles: string[];
     let cached: string[] | undefined = cache.get(cacheKey);
     if (!cached) {
-      const range = `${sheetName}!A1:Z1`;
-      const res = await this.cli.read(spreadsheetId, range);
+      const range = `${name}!A1:Z1`;
+      const res = await this.cli.getRange(sid, range);
       titles = res[0];
       cache.set(cacheKey, titles);
     } else {
@@ -54,19 +61,16 @@ export class ListsDatabase {
     return titles;
   }
 
-  async getMeta(
-    spreadsheetId: string,
-    sheetName: string
-  ): Promise<ListsDbMeta> {
-    const cacheKey = getMetaCacheKey(spreadsheetId, sheetName);
+  async getMeta(sid: SpreadsheetId, name: SheetName): Promise<ListsDbMeta> {
+    const cacheKey = getMetaCacheKey(sid, name);
     let meta: ListsDbMeta;
     const cached: ListsDbMeta | undefined = cache.get(cacheKey);
     if (!cached) {
-      const details = await this.cli.sheetDetails(spreadsheetId);
-      const titles = await this.getTitles(spreadsheetId, sheetName);
+      const details = await this.cli.getDetails(sid);
+      const titles = await this.getTitles(sid, name);
       meta = {
         ...details,
-        tab: sheetName,
+        tab: name,
         titles,
       };
       cache.set(cacheKey, meta);
@@ -75,18 +79,11 @@ export class ListsDatabase {
     }
     return meta;
   }
-  /**
-   * @param {string} spreadsheetId
-   * @param {string} sheetName
-   * @returns {Promise<ListsDbItems[]>}
-   */
-  async list(
-    spreadsheetId: string,
-    sheetName: string
-  ): Promise<ListsDbItems[]> {
-    const titles = await this.getTitles(spreadsheetId, sheetName);
-    const range = `${sheetName}!A${2}:Z`;
-    const res = await this.cli.read(spreadsheetId, range, {
+
+  async getAll(sid: SpreadsheetId, name: SheetName): Promise<ListsDbItems[]> {
+    const titles = await this.getTitles(sid, name);
+    const range = `${name}!A${2}:Z`;
+    const res = await this.cli.getRange(sid, range, {
       majorDimension: "COLUMNS",
     });
     const data = mapRows(titles, res);
@@ -99,15 +96,18 @@ export class ListsDatabase {
    * ===============
    */
 
-  private static _instance: ListsDatabase;
+  private static _instance: ListDatabase;
 
-  static async instance(): Promise<ListsDatabase> {
-    if (!ListsDatabase._instance) {
+  static async instance(
+    keyFile?: string,
+    scopes?: string
+  ): Promise<ListDatabase> {
+    if (!DefaultListDatabase._instance) {
       // Low Level Helper Client
-      const cli = await SpreadsheetsClient.instance();
+      const cli = await DefaultSpreadsheetsClient.instance(keyFile, scopes);
       // High Level Helper Client To Parse Structured Sheets
-      ListsDatabase._instance = new ListsDatabase(cli);
+      DefaultListDatabase._instance = new DefaultListDatabase(cli);
     }
-    return this._instance;
+    return DefaultListDatabase._instance;
   }
 }

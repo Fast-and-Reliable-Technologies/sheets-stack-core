@@ -2,13 +2,24 @@ import _ from "lodash";
 // @ts-ignore - No @types for lodash-query
 import lodashQuery from "lodash-query";
 import NodeCache from "node-cache";
-import { safeGet } from "./utils";
-import { SpreadsheetsClient } from "./spreadsheets";
-import { BasicDbAppendResult, BasicDbMeta } from "./models";
+import { safeGet } from "../utils";
+import { CellValues, SheetName, SpreadsheetId } from "../models";
+import { DefaultSpreadsheetsClient, SpreadsheetsClient } from "../sheet";
+import {
+  BasicDatabase,
+  BasicDatabaseSearchOptions,
+  BasicDbAppendResult,
+  BasicDbMeta,
+  DynamicObject,
+  DynamicRow,
+  ListOptions,
+  SheetHeaders,
+} from "./BasicDatabase";
 
 // @ts-ignore - No @types for lodash-query
 lodashQuery(_);
 
+// TODO: refactor caching strategy
 const cache = new NodeCache({
   maxKeys: 1000,
   stdTTL: 45,
@@ -18,9 +29,13 @@ const IS_NUMBER_PATTERN = /^-?[0-9]+(?:.[0-9]+)?$/;
 const IS_BOOLEAN_PATTERN = /^(?:true|false)$/i;
 const IS_TRUE_PATTERN = /true/i;
 
-const mapRows = (headers: string[], rows: string[][], offset: number): any[] =>
+const mapRows = (
+  headers: SheetHeaders,
+  rows: CellValues,
+  offset: number
+): DynamicRow[] =>
   rows.map((row, i) => {
-    const item: any = { _row: i + offset + 2 };
+    const item: DynamicRow = { _row: i + offset + 2 };
     for (let i = 0; i < headers.length; i++) {
       let val: any = row[i];
       if (IS_NUMBER_PATTERN.test(row[i])) {
@@ -33,14 +48,17 @@ const mapRows = (headers: string[], rows: string[][], offset: number): any[] =>
     return item;
   });
 
-const mapValues = (headers: string[], data: any | any[]): string[][] => {
-  let values;
-  const mapRow = (item: string) =>
-    headers.map((name) => safeGet(item, name, ""));
-  if (_.isArray(data)) {
-    values = data.map(mapRow);
-  } else {
-    values = [mapRow(data)];
+const mapValues = (
+  headers: SheetHeaders,
+  data: DynamicObject[]
+): CellValues => {
+  let values: CellValues = [];
+  for (let i = 0; i < data.length; i++) {
+    const row: string[] = [];
+    for (let j = 0; j < headers.length; j++) {
+      row.push(safeGet(data[i], headers[j], ""));
+    }
+    values.push(row);
   }
   return values;
 };
@@ -67,23 +85,20 @@ async function getData(
 }
 ```
    */
-export class BasicDatabase {
+export class DefaultBasicDatabase implements BasicDatabase {
   protected cli: SpreadsheetsClient;
 
   constructor(cli: SpreadsheetsClient) {
     this.cli = cli;
   }
 
-  async getHeaders(
-    spreadsheetId: string,
-    sheetName: string
-  ): Promise<string[]> {
-    const cacheKey = toHeaderCacheKey(spreadsheetId, sheetName);
+  async getHeaders(sid: SpreadsheetId, name: SheetName): Promise<SheetHeaders> {
+    const cacheKey = toHeaderCacheKey(sid, name);
     let headers: string[];
     let cached: string[] | undefined = cache.get(cacheKey);
     if (!cached) {
-      const res = await this.cli.read(spreadsheetId, toHeaderRange(sheetName));
-      headers = res[0];
+      const res = await this.cli.getRange(sid, toHeaderRange(name));
+      headers = (res as string[][])[0];
       cache.set(cacheKey, headers);
     } else {
       headers = cached;
@@ -91,19 +106,16 @@ export class BasicDatabase {
     return headers;
   }
 
-  async getMeta(
-    spreadsheetId: string,
-    sheetName: string
-  ): Promise<BasicDbMeta> {
-    const cacheKey = toMetaCacheKey(spreadsheetId, sheetName);
+  async getMeta(sid: SpreadsheetId, name: SheetName): Promise<BasicDbMeta> {
+    const cacheKey = toMetaCacheKey(sid, name);
     let meta: BasicDbMeta;
     const cached: BasicDbMeta | undefined = cache.get(cacheKey);
     if (!cached) {
-      const details = await this.cli.sheetDetails(spreadsheetId);
-      const headers = await this.getHeaders(spreadsheetId, sheetName);
+      const details = await this.cli.getDetails(sid);
+      const headers = await this.getHeaders(sid, name);
       meta = {
         ...details,
-        tab: sheetName,
+        tab: name,
         headers,
       };
       cache.set(cacheKey, meta);
@@ -113,36 +125,36 @@ export class BasicDatabase {
     return meta;
   }
 
-  async get(
-    spreadsheetId: string,
-    sheetName: string,
+  async getById(
+    sid: SpreadsheetId,
+    name: SheetName,
     _row: number
-  ): Promise<any> {
-    const headers = await this.getHeaders(spreadsheetId, sheetName);
-    const range = `${sheetName}!A${_row}:Z${_row}`;
-    const rows = await this.cli.read(spreadsheetId, range);
+  ): Promise<DynamicRow> {
+    const headers = await this.getHeaders(sid, name);
+    const range = `${name}!A${_row}:Z${_row}`;
+    const rows = await this.cli.getRange(sid, range);
     const data = mapRows(headers, rows, _row - 2);
-    return data[0] || {};
+    return data[0] || { _row: -99 };
   }
 
   async list(
-    spreadsheetId: string,
-    sheetName: string,
-    options: any = {}
-  ): Promise<any[]> {
+    sid: SpreadsheetId,
+    name: SheetName,
+    options: ListOptions = {}
+  ): Promise<DynamicRow[]> {
     const { limit = 10, offset = 0 } = options;
-    const headers = await this.getHeaders(spreadsheetId, sheetName);
-    const range = `${sheetName}!A${2 + offset}:Z${2 + offset + limit - 1}`;
-    const rows = await this.cli.read(spreadsheetId, range);
+    const headers = await this.getHeaders(sid, name);
+    const range = `${name}!A${2 + offset}:Z${2 + offset + limit - 1}`;
+    const rows = await this.cli.getRange(sid, range);
     const data = mapRows(headers, rows, offset);
     return data;
   }
 
   async search(
-    spreadsheetId: string,
-    sheetName: string,
-    options: any = {}
-  ): Promise<any[]> {
+    sid: SpreadsheetId,
+    name: SheetName,
+    options: BasicDatabaseSearchOptions = {}
+  ): Promise<DynamicRow[]> {
     const {
       limit = 25,
       offset = 0,
@@ -151,18 +163,18 @@ export class BasicDatabase {
       filter,
       query,
     } = options;
-    const headers = await this.getHeaders(spreadsheetId, sheetName);
-    const range = `${sheetName}!A2:Z1000`;
-    const rows = await this.cli.read(spreadsheetId, range);
-    let data = mapRows(headers, rows, offset);
+    const headers = await this.getHeaders(sid, name);
+    const range = `${name}!A2:Z1000`;
+    const rows = await this.cli.getRange(sid, range);
+    let data: DynamicRow[] = mapRows(headers, rows, offset);
     if (_.isArray(sort) || _.isString(sort)) {
-      data = _.sortBy(data, sort);
+      data = _.sortBy(data, sort) as DynamicRow[];
     }
     if (sortDesc) {
       data = data.reverse();
     }
     if (_.isPlainObject(filter)) {
-      data = _.filter(data, filter);
+      data = _.filter(data, filter) as DynamicRow[];
     }
     if (_.isPlainObject(query)) {
       // @ts-ignore - No @types for lodash-query
@@ -178,15 +190,16 @@ export class BasicDatabase {
   }
 
   async insert(
-    spreadsheetId: string,
-    sheetName: string,
-    data: any | any[]
+    sid: SpreadsheetId,
+    name: SheetName,
+    data: DynamicObject | DynamicObject[]
   ): Promise<BasicDbAppendResult> {
-    const headers = await this.getHeaders(spreadsheetId, sheetName);
-    const values = mapValues(headers, data);
-    const res = await this.cli.append(spreadsheetId, `${sheetName}!A1`, values);
+    const insertData = _.isArray(data) ? data : [data];
+    const headers = await this.getHeaders(sid, name);
+    const values = mapValues(headers, insertData);
+    const res = await this.cli.appendRange(sid, `${name}!A1`, values);
     const m = /!A([0-9]+):/.exec(res.updatedRange);
-    let newData = [];
+    let newData: DynamicObject[] = [];
     if (m) {
       const offset = Number(m[1] ?? "-1");
       if (offset > 0) {
@@ -200,18 +213,14 @@ export class BasicDatabase {
   }
 
   async update(
-    spreadsheetId: string,
-    sheetName: string,
+    sid: SpreadsheetId,
+    name: SheetName,
     _row: number,
-    item: any
+    item: DynamicObject
   ): Promise<boolean> {
-    const headers = await this.getHeaders(spreadsheetId, sheetName);
-    const values = mapValues(headers, item);
-    const res = await this.cli.write(
-      spreadsheetId,
-      `${sheetName}!A${_row}`,
-      values
-    );
+    const headers = await this.getHeaders(sid, name);
+    const values = mapValues(headers, [item]);
+    const res = await this.cli.writeRange(sid, `${name}!A${_row}`, values);
     return res.updatedRows === 1;
   }
 
@@ -223,12 +232,15 @@ export class BasicDatabase {
 
   private static _instance: BasicDatabase;
 
-  static async instance(): Promise<BasicDatabase> {
-    if (!BasicDatabase._instance) {
+  static async instance(
+    keyFile?: string,
+    scopes?: string
+  ): Promise<BasicDatabase> {
+    if (!DefaultBasicDatabase._instance) {
       // Low Level Helper Client
-      const cli = await SpreadsheetsClient.instance();
+      const cli = await DefaultSpreadsheetsClient.instance(keyFile, scopes);
       // High Level Helper Client To Parse Structured Sheets
-      BasicDatabase._instance = new BasicDatabase(cli);
+      DefaultBasicDatabase._instance = new DefaultBasicDatabase(cli);
     }
     return this._instance;
   }

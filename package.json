@@ -1,6 +1,6 @@
 {
   "name": "@de44/sheets-stack-core",
-  "version": "1.1.2",
+  "version": "2.0.1",
   "description": "JS wrapper to simplify interactions with Google Sheets.",
   "main": "dist/index.js",
   "publishConfig": {

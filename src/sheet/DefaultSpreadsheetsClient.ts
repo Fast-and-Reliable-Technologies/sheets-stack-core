@@ -1,27 +1,30 @@
 require("dotenv").config();
-import { SheetStackLogger, getDefaultLogger, safeGet } from "./utils";
+import { SheetStackLogger, getDefaultLogger, safeGet } from "../utils";
 import { google, sheets_v4 } from "googleapis";
 import {
   JSONClient,
   GoogleAuth,
 } from "google-auth-library/build/src/auth/googleauth";
-import { SheetWriteResult, SpreadsheetDetails } from "./models";
+import {
+  CellRange,
+  CellValues,
+  SheetWriteResult,
+  SpreadsheetDetails,
+  SpreadsheetId,
+} from "../models";
+import {
+  SpreadsheetReadOptions,
+  SpreadsheetsClient,
+} from "./SpreadsheetsClient";
 
+// TODO: can pass in auth and sheets client to constructor?
 const KEY_FILE = process.env.KEY_FILE ?? "keys.json";
 const SCOPES =
   process.env.SCOPES ?? "https://www.googleapis.com/auth/spreadsheets";
 
-// const cache = new NodeCache();
+// TODO: refactor caching strategy
 
-/** @typedef {import("google-auth-library/build/src/auth/googleauth").GoogleAuth} GoogleAuth */
-/** @typedef {import("googleapis").sheets_v4.Sheets} Sheets */
-/** @typedef {import("./utils").SheetStackLogger} SheetStackLogger */
-/** @typedef {import("./Models").SpreadsheetDetails} SpreadsheetDetails */
-/** @typedef {import("./Models").SheetDetails} SheetDetails */
-/** @typedef {import("./Models").SheetAppendResult} SheetAppendResult */
-/** @typedef {import("./Models").SheetWriteResult} SheetWriteResult */
-
-export function getAuth(
+function getAuth(
   keyFile: string = KEY_FILE,
   scopes: string = SCOPES
 ): GoogleAuth<JSONClient> {
@@ -37,7 +40,7 @@ export function getAuth(
  * @param {GoogleAuth} auth Return value from `getAuth`
  * @returns {Promise<Sheets>}
  */
-export async function getSheetsClient(
+async function getSheetsClient(
   auth: GoogleAuth<JSONClient>
 ): Promise<sheets_v4.Sheets> {
   const sheets = google.sheets({
@@ -63,7 +66,7 @@ async function getRange(
 }
 ```
  */
-export class SpreadsheetsClient {
+export class DefaultSpreadsheetsClient implements SpreadsheetsClient {
   protected cli: sheets_v4.Sheets;
   protected logger: SheetStackLogger;
 
@@ -72,23 +75,17 @@ export class SpreadsheetsClient {
     this.logger = logger ?? getDefaultLogger();
   }
 
-  /**
-   *
-   * @param {string} spreadsheetId
-   * @returns {Promise<SpreadsheetDetails>}
-   * @throws
-   */
-  async sheetDetails(spreadsheetId: string): Promise<SpreadsheetDetails> {
+  async getDetails(sid: SpreadsheetId): Promise<SpreadsheetDetails> {
     const cli = await this.cli;
     try {
       const { data } = await cli.spreadsheets.get({
         includeGridData: false,
-        spreadsheetId,
+        spreadsheetId: sid,
       });
       const title = data.properties?.title || "";
       const { sheets: sheetSheets = [], spreadsheetUrl } = data;
       return {
-        spreadsheetId,
+        spreadsheetId: sid,
         title,
         sheets: sheetSheets.map(({ properties }) => ({
           title: safeGet(properties, "title", ""),
@@ -96,58 +93,43 @@ export class SpreadsheetsClient {
         spreadsheetUrl: spreadsheetUrl || "",
       };
     } catch (cause: any) {
-      const message = `Failed to read details of ${spreadsheetId}`;
+      const message = `Failed to read details of ${sid}`;
       this.logger.error(message + " && " + cause.message);
       throw cause;
     }
   }
 
-  /**
-   * See full docs at http://bit.ly/3k4G16i
-   * @param {string} spreadsheetId
-   * @param {string} range
-   * @param {object} options Full docs at http://bit.ly/3k4G16i
-   * @param {object} options Full docs at http://bit.ly/3k4G16i
-   * @returns {Promise<any[][]>}
-   */
-  async read(
-    spreadsheetId: string,
-    range: string,
-    options: any = {}
-  ): Promise<any[][]> {
+  async getRange(
+    sid: SpreadsheetId,
+    range: CellRange,
+    options?: SpreadsheetReadOptions
+  ): Promise<CellValues> {
     const cli = await this.cli;
     try {
       const { data } = await cli.spreadsheets.values.get({
-        spreadsheetId,
+        spreadsheetId: sid,
         range,
         ...options,
       });
       return safeGet(data, "values", []);
     } catch (cause: any) {
-      const message = `Failed to read values of ${spreadsheetId} @ ${range}`;
+      const message = `Failed to read values of ${sid} @ ${range}`;
       this.logger.error(message + " && " + cause.message);
       throw cause;
     }
   }
 
-  /**
-   *
-   * @param {string} spreadsheetId
-   * @param {string} range
-   * @param {any[][]} values
-   * @returns {Promise<SheetWriteResult>}
-   */
-  async write(
-    spreadsheetId: string,
-    range: string,
-    values: any[][]
+  async writeRange(
+    sid: SpreadsheetId,
+    range: CellRange,
+    values: CellValues
   ): Promise<SheetWriteResult> {
     const cli = await this.cli;
     try {
       const { data } = await cli.spreadsheets.values.update({
         includeValuesInResponse: false,
         range,
-        spreadsheetId,
+        spreadsheetId: sid,
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values,
@@ -159,26 +141,19 @@ export class SpreadsheetsClient {
         updatedCells: safeGet(data, "updatedCells", -1),
       };
     } catch (cause: any) {
-      const message = `Failed to read values of ${spreadsheetId} @ ${range}`;
+      const message = `Failed to read values of ${sid} @ ${range}`;
       this.logger.error(message + " && " + cause.message);
       throw cause;
     }
   }
 
-  /**
-   *
-   * @param {string} spreadsheetId
-   * @param {string} range
-   * @param {any[][]} values
-   * @returns {Promise<SheetAppendResult>}
-   */
-  async append(spreadsheetId: string, range: string, values: any[][]) {
+  async appendRange(sid: SpreadsheetId, range: CellRange, values: CellValues) {
     const cli = await this.cli;
     try {
       const { data } = await cli.spreadsheets.values.append({
         includeValuesInResponse: false,
         range,
-        spreadsheetId,
+        spreadsheetId: sid,
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values,
@@ -191,7 +166,7 @@ export class SpreadsheetsClient {
         updatedCells: safeGet(data, "updates.updatedCells", -1),
       };
     } catch (cause: any) {
-      const message = `Failed to read values of ${spreadsheetId} @ ${range}`;
+      const message = `Failed to read values of ${sid} @ ${range}`;
       this.logger.error(message + " && " + cause.message);
       throw cause;
     }
@@ -205,15 +180,19 @@ export class SpreadsheetsClient {
 
   private static _instance: SpreadsheetsClient;
 
-  static async instance(): Promise<SpreadsheetsClient> {
-    if (!SpreadsheetsClient._instance) {
-      // Google API Auth
-      const auth = getAuth();
+  static async instance(
+    keyFile?: string,
+    scopes?: string
+  ): Promise<SpreadsheetsClient> {
+    if (!DefaultSpreadsheetsClient._instance) {
+      const auth = getAuth(keyFile, scopes);
       // Google Sheets Client
       const sheetsCli = await getSheetsClient(auth);
       // Low Level Helper Client
-      SpreadsheetsClient._instance = new SpreadsheetsClient(sheetsCli);
+      DefaultSpreadsheetsClient._instance = new DefaultSpreadsheetsClient(
+        sheetsCli
+      );
     }
-    return this._instance;
+    return DefaultSpreadsheetsClient._instance;
   }
 }
